@@ -1,0 +1,39 @@
+package com.kdh.solvego.domain.auth.service;
+
+import com.kdh.solvego.domain.auth.dto.LoginRequest;
+import com.kdh.solvego.domain.auth.dto.LoginResponse;
+import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
+import com.kdh.solvego.domain.user.entity.User;
+import com.kdh.solvego.domain.user.repository.UserRepository;
+import com.kdh.solvego.global.security.jwt.JwtTokenProvider;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+
+@Service
+public class AuthService {
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
+
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, JwtTokenProvider jwtTokenProvider) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.jwtTokenProvider = jwtTokenProvider;
+    }
+
+    public LoginResponse login(LoginRequest request) {
+        User user = userRepository.findByUsername(request.username())
+                .orElseThrow(InvalidLoginException::new);
+
+        if (!user.matchesPassword(
+                request.password(),
+                passwordEncoder
+        )) {
+            throw new InvalidLoginException();
+        }
+
+        String accessToken= jwtTokenProvider.createToken(user.getId());
+        return new LoginResponse(accessToken);
+    }
+
+}
