@@ -118,7 +118,7 @@ class ProblemServiceTest {
                 List.of(new ProblemSummaryResponse(1L, "problem", "creator"))
         );
 
-        when(problemRepository.findAllWithCreatorOrderByCreatedAtDesc())
+        when(problemRepository.findAllWithCreatorOrderByIdDesc())
                 .thenReturn(problems);
 
         when(problemMapper.toListResponse(problems))
@@ -130,7 +130,7 @@ class ProblemServiceTest {
         // then
         assertThat(response).isEqualTo(expectedResponse);
 
-        verify(problemRepository).findAllWithCreatorOrderByCreatedAtDesc();
+        verify(problemRepository).findAllWithCreatorOrderByIdDesc();
         verify(problemMapper).toListResponse(problems);
     }
 
@@ -142,7 +142,7 @@ class ProblemServiceTest {
 
         ProblemListResponse expectedResponse = new ProblemListResponse(List.of());
 
-        when(problemRepository.findAllWithCreatorOrderByCreatedAtDesc())
+        when(problemRepository.findAllWithCreatorOrderByIdDesc())
                 .thenReturn(problems);
 
         when(problemMapper.toListResponse(problems))
@@ -154,7 +154,7 @@ class ProblemServiceTest {
         // then
         assertThat(response.problems()).isEmpty();
 
-        verify(problemRepository).findAllWithCreatorOrderByCreatedAtDesc();
+        verify(problemRepository).findAllWithCreatorOrderByIdDesc();
         verify(problemMapper).toListResponse(problems);
     }
 

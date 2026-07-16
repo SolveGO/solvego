@@ -64,7 +64,7 @@ class ProblemRepositoryTest {
         entityManager.clear();
 
         // when
-        List<Problem> problems = problemRepository.findAllWithCreatorOrderByCreatedAtDesc();
+        List<Problem> problems = problemRepository.findAllWithCreatorOrderByIdDesc();
 
         // then
         assertThat(problems).hasSize(2);
@@ -84,7 +84,7 @@ class ProblemRepositoryTest {
     @DisplayName("문제가 없으면 빈 리스트를 반환한다")
     void find_all_with_creator_returns_empty_list() {
         // when
-        List<Problem> problems = problemRepository.findAllWithCreatorOrderByCreatedAtDesc();
+        List<Problem> problems = problemRepository.findAllWithCreatorOrderByIdDesc();
 
         // then
         assertThat(problems).isEmpty();
