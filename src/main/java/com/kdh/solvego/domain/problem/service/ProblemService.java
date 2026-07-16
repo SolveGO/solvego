@@ -28,7 +28,7 @@ public class ProblemService {
 
     @Transactional(readOnly = true)
     public ProblemListResponse getProblems(){
-        List<Problem> problems = problemRepository.findAllWithCreatorOrderByCreatedAtDesc();
+        List<Problem> problems = problemRepository.findAllWithCreatorOrderByIdDesc();
         return problemMapper.toListResponse(problems);
     }
 

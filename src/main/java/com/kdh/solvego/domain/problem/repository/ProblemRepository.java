@@ -9,13 +9,14 @@ import java.util.List;
 import java.util.Optional;
 
 public interface ProblemRepository extends JpaRepository<Problem, Long> {
+
     @Query("""
-           select p
-           from Problem p
-           join fetch p.creator
-           order by p.createdAt desc
-           """)
-    List<Problem> findAllWithCreatorOrderByCreatedAtDesc();
+       select p
+       from Problem p
+       join fetch p.creator
+       order by p.id desc
+       """)
+    List<Problem> findAllWithCreatorOrderByIdDesc();
 
     @Query("""
             select p
