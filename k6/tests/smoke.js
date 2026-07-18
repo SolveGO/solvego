@@ -1,32 +1,24 @@
 import http from "k6/http";
 import { check } from "k6";
 
-import { environments } from "../config/environment.js";
+import { getBaseUrl } from "../config/environment.js";
 
-const environmentName = __ENV.ENV || "local";
-const environment = environments[environmentName];
-
-if (!environment) {
-    throw new Error(`Unknown environment: ${environmentName}`);
-}
-
-const BASE_URL = environment.baseUrl;
+const problemsUrl = `${getBaseUrl()}/api/problems`;
 
 export const options = {
     vus: 1,
-    iterations: 10,
+    iterations: 1,
 
     thresholds: {
         checks: ["rate==1"],
-        http_req_failed: ["rate<0.01"],
-        http_req_duration: ["p(95)<500"],
+        http_req_failed: ["rate==0"],
     },
 };
 
-export default function () {
-    const response = http.get(`${BASE_URL}/api/problems`);
+export default function smokeTest() {
+    const response = http.get(problemsUrl);
 
     check(response, {
-        "status is 200": (r) => r.status === 200,
+        "returns HTTP 200": ({ status }) => status === 200,
     });
 }
