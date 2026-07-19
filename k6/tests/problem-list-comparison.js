@@ -1,7 +1,7 @@
 /*
 Run:
-  k6 run -e ENV=ec2 -e VUS=1 -e ENDPOINT=paginated k6/tests/baseline.js
-  k6 run -e ENV=ec2 -e VUS=1 -e ENDPOINT=legacy k6/tests/baseline.js
+  k6 run -e ENV=ec2 -e VUS=1 -e ENDPOINT=paginated k6/tests/problem-list-comparison.js
+  k6 run -e ENV=ec2 -e VUS=1 -e ENDPOINT=legacy k6/tests/problem-list-comparison.js
 */
 
 import http from "k6/http";
@@ -33,7 +33,7 @@ export const options = {
     },
 };
 
-export default function baselineLoadTest() {
+export default function problemListComparisonTest() {
     const response = http.get(problemsUrl);
 
     check(response, {
