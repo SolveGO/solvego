@@ -3,8 +3,7 @@
 set -euo pipefail
 
 RESULT_DIR="k6/results"
-SCRIPT_PATH="k6/tests/baseline.js"
-
+SCRIPT_PATH="k6/tests/problem-list-comparison.js"
 mkdir -p "$RESULT_DIR"
 
 run_test() {
