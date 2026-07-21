@@ -142,6 +142,51 @@ class AttemptRepositoryTest {
         assertThat(wrongProblems.get(0).getTitle()).isEqualTo("user problem");
     }
 
+    @Test
+    @DisplayName("problemId에 해당하는 모든 attempt를 삭제한다")
+    void delete_all_by_problem_id() {
+        // given
+        User user = persistUser("user");
+
+        Problem targetProblem = persistProblem(user, "target problem");
+        Problem otherProblem = persistProblem(user, "other problem");
+
+        persistAttempt(
+                user,
+                targetProblem,
+                false,
+                LocalDateTime.of(2026, 1, 1, 0, 0)
+        );
+
+        persistAttempt(
+                user,
+                targetProblem,
+                true,
+                LocalDateTime.of(2026, 1, 2, 0, 0)
+        );
+
+        persistAttempt(
+                user,
+                otherProblem,
+                false,
+                LocalDateTime.of(2026, 1, 3, 0, 0)
+        );
+
+        entityManager.clear();
+
+        // when
+        attemptRepository.deleteAllByProblemId(targetProblem.getId());
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        List<Attempt> attempts = attemptRepository.findAll();
+
+        assertThat(attempts).hasSize(1);
+        assertThat(attempts.get(0).getProblem().getId())
+                .isEqualTo(otherProblem.getId());
+    }
+
     private User persistUser(String username) {
         User user = new User(username, "encoded-password");
         entityManager.persist(user);

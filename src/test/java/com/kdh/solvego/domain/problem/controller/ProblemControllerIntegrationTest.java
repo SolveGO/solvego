@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 
@@ -286,6 +287,88 @@ class ProblemControllerIntegrationTest {
                 .andExpect(jsonPath("$.title").value("problem title"))
                 .andExpect(jsonPath("$.description").value("problem description"))
                 .andExpect(jsonPath("$.nextPlayer").value("BLACK"));
+    }
+
+    @Test
+    @DisplayName("문제 작성자는 문제를 삭제할 수 있다")
+    void delete_problem_success() throws Exception {
+        // given
+        String accessToken = signupAndLogin("deleteOwner", "1234");
+        Long problemId = createProblem(accessToken);
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
+                .andExpect(status().isNoContent());
+
+        // 실제로 삭제됐는지 조회 API로 확인
+        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 문제를 삭제할 수 없다")
+    void delete_problem_fails_when_user_is_not_creator() throws Exception {
+        // given
+        String ownerAccessToken = signupAndLogin(
+                "deleteProblemOwner",
+                "1234"
+        );
+
+        Long problemId = createProblem(ownerAccessToken);
+
+        String otherUserAccessToken = signupAndLogin(
+                "deleteOtherUser",
+                "1234"
+        );
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(otherUserAccessToken)
+                        ))
+                .andExpect(status().isForbidden());
+
+        // 삭제되지 않았는지 확인
+        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.problemId").value(problemId));
+    }
+
+    @Test
+    @DisplayName("JWT 없이 문제를 삭제하면 401 Unauthorized를 반환한다")
+    void delete_problem_fails_without_jwt() throws Exception {
+        // given
+        String ownerAccessToken = signupAndLogin(
+                "unauthorizedOwner",
+                "1234"
+        );
+
+        Long problemId = createProblem(ownerAccessToken);
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId))
+                .andExpect(status().isUnauthorized());
+
+        // 삭제되지 않았는지 확인
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제를 삭제하면 404 Not Found를 반환한다")
+    void delete_problem_fails_when_problem_not_found() throws Exception {
+        // given
+        String accessToken = signupAndLogin(
+                "deleteNotFoundUser",
+                "1234"
+        );
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", 999999L)
+                        .header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
+                .andExpect(status().isNotFound());
     }
 
 

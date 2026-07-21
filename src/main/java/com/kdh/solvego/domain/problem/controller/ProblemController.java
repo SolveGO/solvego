@@ -173,4 +173,50 @@ public class ProblemController {
         problemService.updateProblem(userId, problemId, request);
     }
 
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "문제 삭제",
+            description = "인증된 사용자가 자신이 등록한 문제를 삭제합니다. 문제에 연결된 풀이 기록도 함께 삭제됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "문제 삭제 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 사용자",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "문제 삭제 권한 없음",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "존재하지 않는 문제",
+                    content = @Content(
+                            mediaType = MediaType.APPLICATION_JSON_VALUE,
+                            schema = @Schema(implementation = ErrorResponse.class)
+                    )
+            )
+    })
+    @DeleteMapping("/{problemId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteProblem(
+            Authentication authentication,
+            @PathVariable("problemId") Long problemId
+    ) {
+        Long userId = (Long) authentication.getPrincipal();
+
+        problemService.deleteProblem(userId, problemId);
+    }
+
 }

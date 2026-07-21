@@ -6,7 +6,7 @@ import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.problem.service.ProblemService;
 import com.kdh.solvego.global.security.jwt.JwtTokenProvider;
 import com.kdh.solvego.domain.problem.dto.ProblemUpdateRequest;
-import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
+import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +28,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 
@@ -347,7 +348,7 @@ class ProblemControllerTest {
             }
             """;
 
-        doThrow(new ProblemAccessDeniedException())
+        doThrow(new ProblemOwnershipException())
                 .when(problemService)
                 .updateProblem(
                         eq(userId),
@@ -368,6 +369,68 @@ class ProblemControllerTest {
                         eq(problemId),
                         any(ProblemUpdateRequest.class)
                 );
+    }
+
+    @Test
+    @DisplayName("문제 삭제에 성공하면 204 No Content를 반환한다")
+    void delete_problem_success() throws Exception {
+        // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId)
+                        .principal(authentication))
+                .andExpect(status().isNoContent());
+
+        verify(problemService).deleteProblem(userId, problemId);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제를 삭제하면 404 Not Found를 반환한다")
+    void delete_problem_fails_when_problem_not_found() throws Exception {
+        // given
+        Long userId = 1L;
+        Long problemId = 999L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        doThrow(new ProblemNotFoundException())
+                .when(problemService)
+                .deleteProblem(userId, problemId);
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId)
+                        .principal(authentication))
+                .andExpect(status().isNotFound());
+
+        verify(problemService).deleteProblem(userId, problemId);
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 삭제 시 403 Forbidden을 반환한다")
+    void delete_problem_fails_when_user_is_not_creator() throws Exception {
+        // given
+        Long userId = 2L;
+        Long problemId = 10L;
+
+        Authentication authentication =
+                new UsernamePasswordAuthenticationToken(userId, null, List.of());
+
+        doThrow(new ProblemOwnershipException())
+                .when(problemService)
+                .deleteProblem(userId, problemId);
+
+        // when & then
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId)
+                        .principal(authentication))
+                .andExpect(status().isForbidden());
+
+        verify(problemService).deleteProblem(userId, problemId);
     }
 
 }

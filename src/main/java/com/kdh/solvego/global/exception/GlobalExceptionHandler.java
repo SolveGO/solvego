@@ -1,7 +1,7 @@
 package com.kdh.solvego.global.exception;
 
 import com.kdh.solvego.domain.auth.exception.InvalidLoginException;
-import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
+import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.user.exception.DuplicateUsernameException;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
@@ -55,10 +55,10 @@ public class GlobalExceptionHandler {
         return new ErrorResponse(e.getMessage());
     }
 
-    @ExceptionHandler(ProblemAccessDeniedException.class)
+    @ExceptionHandler(ProblemOwnershipException.class)
     @ResponseStatus(HttpStatus.FORBIDDEN)
-    public ErrorResponse handleProblemAccessDeniedException(
-            ProblemAccessDeniedException e
+    public ErrorResponse handleProblemOwnershipException(
+            ProblemOwnershipException e
     ) {
         return new ErrorResponse(e.getMessage());
     }

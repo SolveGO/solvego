@@ -1,6 +1,7 @@
 package com.kdh.solvego.domain.problem.service;
 
-import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
+import com.kdh.solvego.domain.attempt.repository.AttemptRepository;
+import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
 import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.Problem;
@@ -23,11 +24,13 @@ public class ProblemService {
     private final ProblemRepository problemRepository;
     private final UserRepository userRepository;
     private final ProblemMapper problemMapper;
+    private final AttemptRepository attemptRepository;
 
-    public ProblemService(ProblemRepository problemRepository, UserRepository userRepository, ProblemMapper problemMapper) {
+    public ProblemService(ProblemRepository problemRepository, UserRepository userRepository, ProblemMapper problemMapper, AttemptRepository attemptRepository) {
         this.problemRepository = problemRepository;
         this.userRepository = userRepository;
         this.problemMapper = problemMapper;
+        this.attemptRepository = attemptRepository;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +74,7 @@ public class ProblemService {
                 .orElseThrow(ProblemNotFoundException::new);
 
         if (!problem.getCreator().getId().equals(userId)) {
-            throw new ProblemAccessDeniedException();
+            throw new ProblemOwnershipException();
         }
 
         problem.update(
@@ -82,6 +85,19 @@ public class ProblemService {
                 request.nextPlayer(),
                 request.answerPosition()
         );
+    }
+
+    @Transactional
+    public void deleteProblem(Long userId, Long problemId) {
+        Problem problem = problemRepository.findByIdWithCreator(problemId)
+                .orElseThrow(ProblemNotFoundException::new);
+
+        if (!problem.getCreator().getId().equals(userId)) {
+            throw new ProblemOwnershipException();
+        }
+
+        attemptRepository.deleteAllByProblemId(problemId);
+        problemRepository.deleteById(problemId);
     }
 
 }
