@@ -4,10 +4,11 @@ import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import com.kdh.solvego.domain.problem.entity.Problem;
-import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
+import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.problem.mapper.ProblemMapper;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
+import com.kdh.solvego.domain.attempt.repository.AttemptRepository;
 import com.kdh.solvego.domain.user.entity.User;
 import com.kdh.solvego.domain.user.exception.UserNotFoundException;
 import com.kdh.solvego.domain.user.repository.UserRepository;
@@ -26,6 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -43,6 +45,9 @@ class ProblemServiceTest {
 
     @Mock
     private ProblemMapper problemMapper;
+
+    @Mock
+    private AttemptRepository attemptRepository;
 
     @InjectMocks
     private ProblemService problemService;
@@ -294,7 +299,7 @@ class ProblemServiceTest {
         assertThatThrownBy(
                 () -> problemService.updateProblem(otherUserId, problemId, request)
         )
-                .isInstanceOf(ProblemAccessDeniedException.class);
+                .isInstanceOf(ProblemOwnershipException.class);
 
         assertThat(problem.getTitle()).isEqualTo("old problem");
         assertThat(problem.getDescription()).isEqualTo("description");
@@ -302,6 +307,85 @@ class ProblemServiceTest {
 
         verify(problemRepository).findByIdWithCreator(problemId);
         verify(problemRepository, never()).save(any(Problem.class));
+        verifyNoInteractions(userRepository, problemMapper);
+    }
+
+    @Test
+    @DisplayName("문제 작성자는 문제를 삭제할 수 있다")
+    void delete_problem_success() {
+        // given
+        Long userId = 1L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", userId);
+
+        Problem problem = createProblem(creator, "problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        // when
+        problemService.deleteProblem(userId, problemId);
+
+        // then
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verify(attemptRepository).deleteAllByProblemId(problemId);
+        verify(problemRepository).deleteById(problemId);
+        verifyNoInteractions(userRepository, problemMapper);
+    }
+
+    @Test
+    @DisplayName("존재하지 않는 문제를 삭제하면 예외가 발생한다")
+    void delete_problem_fails_when_problem_not_found() {
+        // given
+        Long userId = 1L;
+        Long problemId = 999L;
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.empty());
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.deleteProblem(userId, problemId)
+        )
+                .isInstanceOf(ProblemNotFoundException.class);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verifyNoInteractions(attemptRepository);
+        verify(attemptRepository, never()).deleteAllByProblemId(anyLong());
+        verify(problemRepository, never()).deleteById(anyLong());
+        verifyNoInteractions(userRepository, problemMapper);
+    }
+
+    @Test
+    @DisplayName("문제 작성자가 아니면 문제를 삭제할 수 없다")
+    void delete_problem_fails_when_user_is_not_creator() {
+        // given
+        Long creatorId = 1L;
+        Long otherUserId = 2L;
+        Long problemId = 10L;
+
+        User creator = new User("creator", "encoded-password");
+        ReflectionTestUtils.setField(creator, "id", creatorId);
+
+        Problem problem = createProblem(creator, "problem");
+        ReflectionTestUtils.setField(problem, "id", problemId);
+
+        when(problemRepository.findByIdWithCreator(problemId))
+                .thenReturn(Optional.of(problem));
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.deleteProblem(otherUserId, problemId)
+        )
+                .isInstanceOf(ProblemOwnershipException.class);
+
+        verify(problemRepository).findByIdWithCreator(problemId);
+        verifyNoInteractions(attemptRepository);
+        verify(attemptRepository, never()).deleteAllByProblemId(anyLong());
+        verify(problemRepository, never()).deleteById(anyLong());
         verifyNoInteractions(userRepository, problemMapper);
     }
 

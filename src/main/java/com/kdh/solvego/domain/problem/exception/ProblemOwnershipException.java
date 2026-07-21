@@ -1,8 +1,8 @@
 package com.kdh.solvego.domain.problem.exception;
 
-public class ProblemAccessDeniedException extends RuntimeException {
+public class ProblemOwnershipException extends RuntimeException {
 
-    public ProblemAccessDeniedException() {
+    public ProblemOwnershipException() {
         super("You do not have permission to modify this problem");
     }
 }

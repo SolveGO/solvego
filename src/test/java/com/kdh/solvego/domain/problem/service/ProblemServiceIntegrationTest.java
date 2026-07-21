@@ -1,10 +1,12 @@
 package com.kdh.solvego.domain.problem.service;
 
+import com.kdh.solvego.domain.attempt.entity.Attempt;
+import com.kdh.solvego.domain.attempt.repository.AttemptRepository;
 import com.kdh.solvego.domain.common.vo.Position;
 import com.kdh.solvego.domain.problem.dto.*;
 import com.kdh.solvego.domain.problem.entity.PlayerColor;
 import com.kdh.solvego.domain.problem.entity.Problem;
-import com.kdh.solvego.domain.problem.exception.ProblemAccessDeniedException;
+import com.kdh.solvego.domain.problem.exception.ProblemOwnershipException;
 import com.kdh.solvego.domain.problem.exception.ProblemNotFoundException;
 import com.kdh.solvego.domain.problem.repository.ProblemRepository;
 import com.kdh.solvego.domain.user.entity.User;
@@ -36,6 +38,9 @@ class ProblemServiceIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private AttemptRepository attemptRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -316,7 +321,7 @@ class ProblemServiceIntegrationTest {
                         request
                 )
         )
-                .isInstanceOf(ProblemAccessDeniedException.class);
+                .isInstanceOf(ProblemOwnershipException.class);
 
         entityManager.clear();
 
@@ -331,5 +336,108 @@ class ProblemServiceIntegrationTest {
 
         assertThat(unchangedProblem.getNextPlayer())
                 .isEqualTo(PlayerColor.BLACK);
+    }
+
+    @Test
+    @DisplayName("문제를 삭제하면 문제와 관련 풀이 기록이 DB에서 삭제된다")
+    void delete_problem_success() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        User solver = userRepository.save(
+                new User("solver", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Attempt attempt = attemptRepository.save(new Attempt(
+                solver,
+                problem,
+                new Position(1, 1),
+                false
+        ));
+
+        Long problemId = problem.getId();
+        Long attemptId = attempt.getId();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when
+        problemService.deleteProblem(creator.getId(), problemId);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // then
+        assertThat(problemRepository.findById(problemId)).isEmpty();
+        assertThat(attemptRepository.findById(attemptId)).isEmpty();
+    }
+    @Test
+    @DisplayName("문제 작성자가 아니면 문제를 삭제할 수 없다")
+    void delete_problem_fails_when_user_is_not_creator() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        User otherUser = userRepository.save(
+                new User("other-user", "encoded-password")
+        );
+
+        Problem problem = problemRepository.save(new Problem(
+                "problem",
+                "description",
+                List.of(new Position(3, 3)),
+                List.of(new Position(4, 4)),
+                PlayerColor.BLACK,
+                new Position(10, 10),
+                creator
+        ));
+
+        Long problemId = problem.getId();
+
+        entityManager.flush();
+        entityManager.clear();
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.deleteProblem(
+                        otherUser.getId(),
+                        problemId
+                )
+        )
+                .isInstanceOf(ProblemOwnershipException.class);
+
+        entityManager.clear();
+
+        assertThat(problemRepository.findById(problemId)).isPresent();
+    }
+    @Test
+    @DisplayName("존재하지 않는 문제를 삭제하면 예외가 발생한다")
+    void delete_problem_fails_when_problem_not_found() {
+        // given
+        User creator = userRepository.save(
+                new User("creator", "encoded-password")
+        );
+
+        // when & then
+        assertThatThrownBy(
+                () -> problemService.deleteProblem(
+                        creator.getId(),
+                        999L
+                )
+        )
+                .isInstanceOf(ProblemNotFoundException.class);
     }
 }

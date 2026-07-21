@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -39,7 +40,7 @@ class MvpApiFlowIntegrationTest {
     private ObjectMapper objectMapper;
 
     @Test
-    @DisplayName("MVP 전체 흐름: 회원가입부터 문제 수정과 오답 조회까지 성공한다")
+    @DisplayName("MVP 전체 흐름: 회원가입부터 문제 등록, 수정, 풀이, 삭제까지 성공한다")
     void mvp_api_flow_success() throws Exception {
         // given
         String username = "flow" + System.nanoTime() % 1_000_000;
@@ -71,6 +72,12 @@ class MvpApiFlowIntegrationTest {
 
         // 9. 오답 문제 조회
         getWrongProblems(accessToken, problemId);
+
+        // 10. 문제 삭제
+        deleteProblem(accessToken, problemId);
+
+        // 11. 삭제된 문제 조회
+        getDeletedProblem(problemId);
     }
 
     private void signup(String username, String password) throws Exception {
@@ -187,6 +194,20 @@ class MvpApiFlowIntegrationTest {
                 .andExpect(jsonPath("$.whiteStones[0].y").value(6))
                 .andExpect(jsonPath("$.nextPlayer").value("WHITE"))
                 .andExpect(jsonPath("$.answerPosition").doesNotExist());
+    }
+
+    private void deleteProblem( String accessToken, Long problemId) throws Exception {
+        mockMvc.perform(delete("/api/problems/{problemId}", problemId)
+                        .header(
+                                HttpHeaders.AUTHORIZATION,
+                                bearer(accessToken)
+                        ))
+                .andExpect(status().isNoContent());
+    }
+
+    private void getDeletedProblem(Long problemId) throws Exception {
+        mockMvc.perform(get("/api/problems/{problemId}", problemId))
+                .andExpect(status().isNotFound());
     }
 
     private String bearer(String accessToken) {
